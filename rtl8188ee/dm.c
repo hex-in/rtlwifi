@@ -886,7 +886,7 @@ static void dm_txpower_track_cb_therm(struct ieee80211_hw *hw)
 	u8 thermalvalue_avg_count = 0;
 	u32 thermalvalue_avg = 0;
 	long  ele_d, temp_cck;
-	char ofdm_index[2], cck_index = 0,
+	s8 ofdm_index[2], cck_index = 0,
 		ofdm_index_old[2] = {0, 0}, cck_index_old = 0;
 	int i = 0;
 	/*bool is2t = false;*/
@@ -898,7 +898,7 @@ static void dm_txpower_track_cb_therm(struct ieee80211_hw *hw)
 	/*0.1 the following TWO tables decide the
 	 *final index of OFDM/CCK swing table
 	 */
-	char delta_swing_table_idx[2][15]  = {
+	s8 delta_swing_table_idx[2][15]  = {
 		{0, 0, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11},
 		{0, 0, -1, -2, -3, -4, -4, -4, -4, -5, -7, -8, -9, -9, -10}
 	};
@@ -1123,23 +1123,22 @@ static void rtl88e_dm_init_txpower_tracking(struct ieee80211_hw *hw)
 void rtl88e_dm_check_txpower_tracking(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	static u8 tm_trigger;
 
 	if (!rtlpriv->dm.txpower_tracking)
 		return;
 
-	if (!tm_trigger) {
+	if (!rtlpriv->dm.tm_trigger) {
 		rtl_set_rfreg(hw, RF90_PATH_A, RF_T_METER, BIT(17)|BIT(16),
 			      0x03);
 		RT_TRACE(rtlpriv, COMP_POWER_TRACKING, DBG_LOUD,
 			 "Trigger 88E Thermal Meter!!\n");
-		tm_trigger = 1;
+		rtlpriv->dm.tm_trigger = 1;
 		return;
 	} else {
 		RT_TRACE(rtlpriv, COMP_POWER_TRACKING, DBG_LOUD,
 			 "Schedule TxPowerTracking !!\n");
-				dm_txpower_track_cb_therm(hw);
-		tm_trigger = 0;
+		dm_txpower_track_cb_therm(hw);
+		rtlpriv->dm.tm_trigger = 0;
 	}
 }
 
@@ -1708,6 +1707,7 @@ static void rtl88e_dm_fast_ant_training(struct ieee80211_hw *hw)
 	}
 }
 
+
 void rtl88e_dm_fast_antenna_training_callback(unsigned long data)
 {
 	struct ieee80211_hw *hw = (struct ieee80211_hw *)data;
@@ -1791,6 +1791,7 @@ void rtl88e_dm_watchdog(struct ieee80211_hw *hw)
 	if (ppsc->p2p_ps_info.p2p_ps_mode)
 		fw_ps_awake = false;
 
+	spin_lock(&rtlpriv->locks.rf_ps_lock);
 	if ((ppsc->rfpwr_state == ERFON) &&
 	    ((!fw_current_inpsmode) && fw_ps_awake) &&
 	    (!ppsc->rfchange_inprogress)) {
@@ -1803,4 +1804,5 @@ void rtl88e_dm_watchdog(struct ieee80211_hw *hw)
 		rtl88e_dm_check_edca_turbo(hw);
 		rtl88e_dm_antenna_diversity(hw);
 	}
+	spin_unlock(&rtlpriv->locks.rf_ps_lock);
 }
