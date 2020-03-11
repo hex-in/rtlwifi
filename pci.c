@@ -41,6 +41,7 @@
 MODULE_AUTHOR("lizhaoming	<chaoming_li@realsil.com.cn>");
 MODULE_AUTHOR("Realtek WlanFAE	<wlanfae@realtek.com>");
 MODULE_AUTHOR("Larry Finger	<Larry.FInger@lwfinger.net>");
+MODULE_AUTHOR("heyunhuan	<heyunhuan@gmail.com>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("PCI basic driver for rtlwifi");
 
@@ -369,28 +370,30 @@ static bool rtl_pci_check_buddy_priv(struct ieee80211_hw *hw,
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_pci_priv *pcipriv = rtl_pcipriv(hw);
 	bool find_buddy_priv = false;
-	struct rtl_priv *tpriv;
+	struct rtl_priv *tpriv = NULL;
 	struct rtl_pci_priv *tpcipriv = NULL;
 
 	if (!list_empty(&rtlpriv->glb_var->glb_priv_list)) {
 		list_for_each_entry(tpriv, &rtlpriv->glb_var->glb_priv_list,
 				    list) {
-			tpcipriv = (struct rtl_pci_priv *)tpriv->priv;
-			RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD,
-				 "pcipriv->ndis_adapter.funcnumber %x\n",
-				pcipriv->ndis_adapter.funcnumber);
-			RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD,
-				 "tpcipriv->ndis_adapter.funcnumber %x\n",
-				tpcipriv->ndis_adapter.funcnumber);
+			if ( tpriv ) {
+				tpcipriv = (struct rtl_pci_priv *)tpriv->priv;
+				RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD,
+					"pcipriv->ndis_adapter.funcnumber %x\n",
+					pcipriv->ndis_adapter.funcnumber);
+				RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD,
+					"tpcipriv->ndis_adapter.funcnumber %x\n",
+					tpcipriv->ndis_adapter.funcnumber);
 
-			if ((pcipriv->ndis_adapter.busnumber ==
-			     tpcipriv->ndis_adapter.busnumber) &&
-			    (pcipriv->ndis_adapter.devnumber ==
-			    tpcipriv->ndis_adapter.devnumber) &&
-			    (pcipriv->ndis_adapter.funcnumber !=
-			    tpcipriv->ndis_adapter.funcnumber)) {
-				find_buddy_priv = true;
-				break;
+				if ((pcipriv->ndis_adapter.busnumber ==
+					tpcipriv->ndis_adapter.busnumber) &&
+					(pcipriv->ndis_adapter.devnumber ==
+					tpcipriv->ndis_adapter.devnumber) &&
+					(pcipriv->ndis_adapter.funcnumber !=
+					tpcipriv->ndis_adapter.funcnumber)) {
+					find_buddy_priv = true;
+					break;
+				}
 			}
 		}
 	}
@@ -807,9 +810,10 @@ static void _rtl_pci_rx_interrupt(struct ieee80211_hw *hw)
 								      hw_queue);
 			if (rx_remained_cnt == 0)
 				return;
-			buffer_desc = &rtlpci->rx_ring[rxring_idx].buffer_desc[
-				rtlpci->rx_ring[rxring_idx].idx];
-			pdesc = (struct rtl_rx_desc *)skb->data;
+			// Removed by heyunhuan
+			// buffer_desc = &rtlpci->rx_ring[rxring_idx].buffer_desc[
+			// 	rtlpci->rx_ring[rxring_idx].idx];
+			// pdesc = (struct rtl_rx_desc *)skb->data;
 		} else {	/* rx descriptor */
 			pdesc = &rtlpci->rx_ring[rxring_idx].desc[
 				rtlpci->rx_ring[rxring_idx].idx];
@@ -832,6 +836,14 @@ static void _rtl_pci_rx_interrupt(struct ieee80211_hw *hw)
 		new_skb = dev_alloc_skb(rtlpci->rxbuffersize);
 		if (unlikely(!new_skb))
 			goto no_new;
+		// Add by heyunhuan
+		if ( rtlpriv->use_new_trx_flow ) {
+			buffer_desc =
+			  &rtlpci->rx_ring[rxring_idx].buffer_desc
+				[rtlpci->rx_ring[rxring_idx].idx];
+			/*means rx wifi info*/
+			pdesc = ( struct rtl_rx_desc * )skb->data;
+		}
 		memset(&rx_status , 0 , sizeof(rx_status));
 		rtlpriv->cfg->ops->query_rx_desc(hw, &stats,
 						 &rx_status, (u8 *)pdesc, skb);
@@ -896,7 +908,7 @@ static void _rtl_pci_rx_interrupt(struct ieee80211_hw *hw)
 					rtlpriv->link_info.num_rx_inperiod++;
 			}
 
-			rtl_collect_scan_list(hw, skb);
+			// rtl_collect_scan_list(hw, skb);	//Removed by heyunhuan
 
 			/* static bcn for roaming */
 			rtl_beacon_statistic(hw, skb);

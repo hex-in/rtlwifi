@@ -272,10 +272,10 @@ static struct rtl_hal_ops rtl8188ee_hal_ops = {
 
 static struct rtl_mod_params rtl88ee_mod_params = {
 	.sw_crypto = false,
-	.inactiveps = true,
+	.inactiveps = false,
 	.swctrl_lps = false,
 	.fwctrl_lps = false,
-	.msi_support = true,
+	.msi_support = true,	// 64bit = 1 32 bit = 0
 	.debug = 0,
 };
 
@@ -385,6 +385,7 @@ static struct pci_device_id rtl88ee_pci_ids[] = {
 MODULE_DEVICE_TABLE(pci, rtl88ee_pci_ids);
 
 MODULE_AUTHOR("zhiyuan_yang	<zhiyuan_yang@realsil.com.cn>");
+MODULE_AUTHOR("heyunhuan    <heyunhuan@gmail.com>" );
 MODULE_AUTHOR("Realtek WlanFAE	<wlanfae@realtek.com>");
 MODULE_AUTHOR("Larry Finger	<Larry.Finger@lwfinger.net>");
 MODULE_LICENSE("GPL");
@@ -400,9 +401,9 @@ module_param_named(msi, rtl88ee_mod_params.msi_support, bool, 0444);
 module_param_named(disable_watchdog, rtl88ee_mod_params.disable_watchdog,
 		   bool, 0444);
 MODULE_PARM_DESC(swenc, "Set to 1 for software crypto (default 0)\n");
-MODULE_PARM_DESC(ips, "Set to 0 to not use link power save (default 1)\n");
+MODULE_PARM_DESC(ips, "Set to 0 to not use link power save (default 0)\n");
 MODULE_PARM_DESC(swlps, "Set to 1 to use SW control power save (default 0)\n");
-MODULE_PARM_DESC(fwlps, "Set to 1 to use FW control power save (default 1)\n");
+MODULE_PARM_DESC(fwlps, "Set to 1 to use FW control power save (default 0)\n");
 MODULE_PARM_DESC(msi, "Set to 1 to use MSI interrupts mode (default 1)\n");
 MODULE_PARM_DESC(debug, "Set debug level (0-5) (default 0)");
 MODULE_PARM_DESC(disable_watchdog, "Set to 1 to disable the watchdog (default 0)\n");

@@ -103,6 +103,7 @@ static void rtl_cam_program_entry(struct ieee80211_hw *hw, u32 entry_no,
 					target_content);
 			rtl_write_dword(rtlpriv, rtlpriv->cfg->maps[RWCAM],
 					target_command);
+			udelay( 100 );
 
 			RT_TRACE(rtlpriv, COMP_SEC, DBG_LOUD,
 				 "WRITE A4: %x\n", target_content);
