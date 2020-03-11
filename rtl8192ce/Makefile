@@ -1,5 +1,6 @@
 rtl8192ce-objs :=		\
 		dm.o		\
+		fw.o		\
 		hw.o		\
 		led.o		\
 		phy.o		\

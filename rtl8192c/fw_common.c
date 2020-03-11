@@ -145,10 +145,8 @@ static void _rtl92c_write_fw(struct ieee80211_hw *hw,
 		pageNums = size / FW_8192C_PAGE_SIZE;
 		remainsize = size % FW_8192C_PAGE_SIZE;
 
-		if (pageNums > 4) {
-			RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
-				 "Page numbers should not greater then 4\n");
-		}
+		if (pageNums > 4)
+			pr_err("Page numbers should not greater then 4\n");
 
 		for (page = 0; page < pageNums; page++) {
 			offset = page * FW_8192C_PAGE_SIZE;
@@ -180,15 +178,10 @@ static int _rtl92c_fw_free_to_go(struct ieee80211_hw *hw)
 		 (!(value32 & FWDL_ChkSum_rpt)));
 
 	if (counter >= FW_8192C_POLLING_TIMEOUT_COUNT) {
-		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
-			 "chksum report faill ! REG_MCUFWDL:0x%08x .\n",
-			  value32);
+		pr_err("chksum report faill ! REG_MCUFWDL:0x%08x .\n",
+		       value32);
 		goto exit;
 	}
-
-	RT_TRACE(rtlpriv, COMP_FW, DBG_TRACE,
-		 "Checksum report OK ! REG_MCUFWDL:0x%08x .\n", value32);
-
 	value32 = rtl_read_dword(rtlpriv, REG_MCUFWDL);
 	value32 |= MCUFWDL_RDY;
 	value32 &= ~WINTINI_RDY;
@@ -199,9 +192,6 @@ static int _rtl92c_fw_free_to_go(struct ieee80211_hw *hw)
 	do {
 		value32 = rtl_read_dword(rtlpriv, REG_MCUFWDL);
 		if (value32 & WINTINI_RDY) {
-			RT_TRACE(rtlpriv, COMP_FW, DBG_TRACE,
-				 "Polling FW ready success!! REG_MCUFWDL:0x%08x .\n",
-					value32);
 			err = 0;
 			goto exit;
 		}
@@ -210,8 +200,7 @@ static int _rtl92c_fw_free_to_go(struct ieee80211_hw *hw)
 
 	} while (counter++ < FW_8192C_POLLING_TIMEOUT_COUNT);
 
-	RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
-		 "Polling FW ready fail!! REG_MCUFWDL:0x%08x .\n", value32);
+	pr_err("Polling FW ready fail!! REG_MCUFWDL:0x%08x .\n", value32);
 
 exit:
 	return err;
@@ -221,7 +210,7 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	struct rtl92c_firmware_header *pfwheader;
+	struct rtlwifi_firmware_header *pfwheader;
 	u8 *pfwdata;
 	u32 fwsize;
 	int err;
@@ -230,18 +219,19 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 	if (!rtlhal->pfirmware)
 		return 1;
 
-	pfwheader = (struct rtl92c_firmware_header *)rtlhal->pfirmware;
+	pfwheader = (struct rtlwifi_firmware_header *)rtlhal->pfirmware;
 	pfwdata = (u8 *)rtlhal->pfirmware;
 	fwsize = rtlhal->fwsize;
-
 	if (IS_FW_HEADER_EXIST(pfwheader)) {
 		RT_TRACE(rtlpriv, COMP_FW, DBG_DMESG,
 			 "Firmware Version(%d), Signature(%#x),Size(%d)\n",
 			  pfwheader->version, pfwheader->signature,
-			  (int)sizeof(struct rtl92c_firmware_header));
+			  (int)sizeof(struct rtlwifi_firmware_header));
 
-		pfwdata = pfwdata + sizeof(struct rtl92c_firmware_header);
-		fwsize = fwsize - sizeof(struct rtl92c_firmware_header);
+		rtlhal->fw_version = le16_to_cpu(pfwheader->version);
+		rtlhal->fw_subversion = pfwheader->subversion;
+		pfwdata = pfwdata + sizeof(struct rtlwifi_firmware_header);
+		fwsize = fwsize - sizeof(struct rtlwifi_firmware_header);
 	}
 
 	_rtl92c_enable_fw_download(hw, true);
@@ -249,13 +239,8 @@ int rtl92c_download_fw(struct ieee80211_hw *hw)
 	_rtl92c_enable_fw_download(hw, false);
 
 	err = _rtl92c_fw_free_to_go(hw);
-	if (err) {
-		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
-			 "Firmware is not ready to run!\n");
-	} else {
-		RT_TRACE(rtlpriv, COMP_FW, DBG_TRACE,
-			 "Firmware is ready to run!\n");
-	}
+	if (err)
+		pr_err("Firmware is not ready to run!\n");
 
 	return 0;
 }
@@ -326,8 +311,7 @@ static void _rtl92c_fill_h2c_command(struct ieee80211_hw *hw,
 	while (!bwrite_sucess) {
 		wait_writeh2c_limmit--;
 		if (wait_writeh2c_limmit == 0) {
-			RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
-				 "Write H2C fail because no trigger for FW INT!\n");
+			pr_err("Write H2C fail because no trigger for FW INT!\n");
 			break;
 		}
 
@@ -351,7 +335,7 @@ static void _rtl92c_fill_h2c_command(struct ieee80211_hw *hw,
 			break;
 		default:
 			RT_TRACE(rtlpriv, COMP_ERR, DBG_LOUD,
-				 "switch case not process\n");
+				 "switch case %#x not processed\n", boxnum);
 			break;
 		}
 
@@ -455,7 +439,7 @@ static void _rtl92c_fill_h2c_command(struct ieee80211_hw *hw,
 			break;
 		default:
 			RT_TRACE(rtlpriv, COMP_ERR, DBG_LOUD,
-				 "switch case not process\n");
+				 "switch case %#x not processed\n", cmd_len);
 			break;
 		}
 
@@ -484,7 +468,7 @@ void rtl92c_fill_h2c_cmd(struct ieee80211_hw *hw,
 	u32 tmp_cmdbuf[2];
 
 	if (!rtlhal->fw_ready) {
-		RT_ASSERT(false,
+		WARN_ONCE(true,
 			  "return H2C cmd because of Fw download fail!!!\n");
 		return;
 	}
@@ -509,7 +493,7 @@ void rtl92c_firmware_selfreset(struct ieee80211_hw *hw)
 	while (u1b_tmp & BIT(2)) {
 		delay--;
 		if (delay == 0) {
-			RT_ASSERT(false, "8051 reset fail.\n");
+			WARN_ONCE(true, "8051 reset fail.\n");
 			break;
 		}
 		udelay(50);
